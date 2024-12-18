@@ -1,0 +1,9 @@
+[package]
+name = "fetch"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+insta = { workspace = true }
+clap = { workspace = true }
+duct = { workspace = true }

@@ -1,0 +1,8 @@
+[workspace]
+members = ["solutions", "fetch"]
+resolver = "2"
+
+[workspace.dependencies]
+insta = "1.41.1"
+clap = "4.5.23"
+duct = "0.13.7"
