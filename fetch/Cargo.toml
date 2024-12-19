@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 insta = { workspace = true }
 clap = { workspace = true }
+ureq = { workspace = true }
 duct = { workspace = true }

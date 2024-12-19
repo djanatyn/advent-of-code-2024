@@ -5,4 +5,5 @@ resolver = "2"
 [workspace.dependencies]
 insta = "1.41.1"
 clap = "4.5.23"
+ureq = "2.12.1"
 duct = "0.13.7"
