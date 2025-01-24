@@ -34,28 +34,26 @@ impl Levels {
         self.monotonic() && self.adjacency_check()
     }
 
+    fn remove_index(&self, removed_index: usize) -> Self {
+        let levels = self
+            .0
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, lvl)| {
+                if idx == removed_index {
+                    None
+                } else {
+                    Some(*lvl)
+                }
+            })
+            .collect();
+        Self(levels)
+    }
+
     // part two
     fn dampened_safe(&self) -> bool {
-        // check unchanged
-        if self.safe() {
-            return true;
-        }
-        // check with each index removed
-        (0..self.0.len()).any(|removed_index| {
-            let levels = self
-                .0
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, lvl)| {
-                    if idx == removed_index {
-                        None
-                    } else {
-                        Some(*lvl)
-                    }
-                })
-                .collect();
-            Levels(levels).safe()
-        })
+        let mut indexes = 0..self.0.len();
+        self.safe() || indexes.any(|idx| self.remove_index(idx).safe())
     }
 }
 
