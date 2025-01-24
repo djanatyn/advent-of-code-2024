@@ -33,6 +33,30 @@ impl Levels {
     fn safe(&self) -> bool {
         self.monotonic() && self.adjacency_check()
     }
+
+    // part two
+    fn dampened_safe(&self) -> bool {
+        // check unchanged
+        if self.safe() {
+            return true;
+        }
+        // check with each index removed
+        (0..self.0.len()).any(|removed_index| {
+            let levels = self
+                .0
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, lvl)| {
+                    if idx == removed_index {
+                        None
+                    } else {
+                        Some(*lvl)
+                    }
+                })
+                .collect();
+            Levels(levels).safe()
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -48,8 +72,12 @@ fn part1(input: &Reports) -> usize {
     input.0.iter().filter(|levels| levels.safe()).count()
 }
 
-fn part2(_input: &Reports) -> i64 {
-    todo!()
+fn part2(input: &Reports) -> usize {
+    input
+        .0
+        .iter()
+        .filter(|levels| levels.dampened_safe())
+        .count()
 }
 
 fn main() {
