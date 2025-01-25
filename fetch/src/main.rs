@@ -62,19 +62,24 @@ pub struct Problem {
 }
 
 impl Problem {
-    fn request(config: &Config, path: String) -> Result<String, ureq::Error> {
+    fn request(config: &Config, path: String) -> Result<ureq::Response, Box<ureq::Error>> {
         Ok(ureq::get(&path)
             .set(
                 "Cookie",
                 format!("session={}", config.session_cookie).as_str(),
             )
-            .call()?
-            .into_string()?)
+            .call()?)
     }
 
-    pub fn download(config: &Config) -> Result<Self, ureq::Error> {
-        let description = Self::request(config, config.description_url())?;
-        let input = Self::request(config, config.input_url())?;
+    pub fn download(config: &Config) -> Result<Self, String> {
+        let description = Self::request(config, config.description_url())
+            .map_err(|e| e.to_string())?
+            .into_string()
+            .map_err(|e| e.to_string())?;
+        let input = Self::request(config, config.input_url())
+            .map_err(|e| e.to_string())?
+            .into_string()
+            .map_err(|e| e.to_string())?;
         Ok(Problem { description, input })
     }
 
