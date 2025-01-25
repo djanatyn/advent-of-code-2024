@@ -73,20 +73,12 @@ impl Parser {
 impl Tokenizer {
     fn mul_start(&self, pos: usize) -> Option<(Token, usize)> {
         let rest = self.0.get(pos..)?;
-        if rest.starts_with("mul(") {
-            Some((Token::MulStart, pos + 4))
-        } else {
-            None
-        }
+        rest.starts_with("mul(").then(|| (Token::MulStart, pos + 4))
     }
 
     fn mul_end(&self, pos: usize) -> Option<(Token, usize)> {
         let rest = self.0.get(pos..)?;
-        if rest.starts_with(")") {
-            Some((Token::MulEnd, pos + 1))
-        } else {
-            None
-        }
+        rest.starts_with(")").then(|| (Token::MulEnd, pos + 1))
     }
 
     fn number(&self, pos: usize) -> Option<(Token, usize)> {
@@ -101,11 +93,7 @@ impl Tokenizer {
 
     fn comma(&self, pos: usize) -> Option<(Token, usize)> {
         let rest = self.0.get(pos..)?;
-        if rest.starts_with(",") {
-            Some((Token::Comma, pos + 1))
-        } else {
-            None
-        }
+        rest.starts_with(",").then(|| (Token::Comma, pos + 1))
     }
 
     fn garbage(&self, pos: usize) -> Option<(Token, usize)> {
@@ -113,7 +101,7 @@ impl Tokenizer {
     }
 
     fn tokenize(&self) -> Vec<Token> {
-        let tokenizers = vec![
+        let tokenizers = [
             Self::mul_start,
             Self::mul_end,
             Self::number,
@@ -125,16 +113,10 @@ impl Tokenizer {
         let mut tokens = vec![];
 
         while pos <= self.0.len() {
-            let mut success = false;
-            for tokenizer in &tokenizers {
-                if let Some((token, new_pos)) = tokenizer(self, pos) {
-                    tokens.push(token);
-                    pos = new_pos;
-                    success = true;
-                    break;
-                }
-            }
-            if !success {
+            if let Some((token, new_pos)) = tokenizers.iter().find_map(|t| t(self, pos)) {
+                tokens.push(token);
+                pos = new_pos;
+            } else {
                 panic!("failed to match any tokenizers")
             }
         }
