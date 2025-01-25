@@ -27,6 +27,18 @@ enum ParserState {
     MulSecondArg { enabled: bool, arg1: i64, arg2: i64 },
 }
 
+impl ParserState {
+    fn enabled(&self) -> bool {
+        match self {
+            ParserState::Empty { enabled } => *enabled,
+            ParserState::MulStart { enabled } => *enabled,
+            ParserState::MulFirstArg { enabled, .. } => *enabled,
+            ParserState::MulFirstArgComma { enabled, .. } => *enabled,
+            ParserState::MulSecondArg { enabled, .. } => *enabled,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Parser(Vec<Token>);
 
@@ -42,54 +54,56 @@ impl Parser {
         let mut state = ParserState::Empty { enabled: true };
 
         for token in &self.0 {
-            // do() or don't()
             state = match token {
                 Token::Enable => ParserState::Empty { enabled: true },
                 Token::Disable => ParserState::Empty { enabled: false },
-                _ => state,
-            };
-            if let Token::Enable | Token::Disable = token {
-                continue;
-            }
-            // mul(arg1, arg2)
-            state = match state {
-                ParserState::Empty { enabled } => match token {
-                    Token::MulStart => ParserState::MulStart { enabled },
-                    _ => ParserState::Empty { enabled },
-                },
-                ParserState::MulStart { enabled } => match token {
-                    Token::Number(arg1) => ParserState::MulFirstArg {
-                        enabled,
-                        arg1: arg1.parse::<i64>().unwrap(),
+                Token::MulStart => match state {
+                    ParserState::Empty { enabled } => ParserState::MulStart { enabled },
+                    _ => ParserState::Empty {
+                        enabled: state.enabled(),
                     },
-                    _ => ParserState::Empty { enabled },
                 },
-                ParserState::MulFirstArg { enabled, arg1 } => match token {
-                    Token::Comma => ParserState::MulFirstArgComma { enabled, arg1 },
-                    _ => ParserState::Empty { enabled },
-                },
-                ParserState::MulFirstArgComma { enabled, arg1 } => match token {
-                    Token::Number(arg2) => ParserState::MulSecondArg {
+                Token::Number(num) => match state {
+                    ParserState::MulStart { enabled } => ParserState::MulFirstArg {
+                        enabled,
+                        arg1: num.parse::<i64>().unwrap(),
+                    },
+                    ParserState::MulFirstArgComma { enabled, arg1 } => ParserState::MulSecondArg {
                         enabled,
                         arg1,
-                        arg2: arg2.parse::<i64>().unwrap(),
+                        arg2: num.parse::<i64>().unwrap(),
                     },
-                    _ => ParserState::Empty { enabled },
+                    _ => ParserState::Empty {
+                        enabled: state.enabled(),
+                    },
                 },
-                ParserState::MulSecondArg {
-                    enabled,
-                    arg1,
-                    arg2,
-                } => match token {
-                    Token::MulEnd => {
+                Token::Comma => match state {
+                    ParserState::MulFirstArg { enabled, arg1 } => {
+                        ParserState::MulFirstArgComma { enabled, arg1 }
+                    }
+                    _ => ParserState::Empty {
+                        enabled: state.enabled(),
+                    },
+                },
+                Token::MulEnd => match state {
+                    ParserState::MulSecondArg {
+                        enabled,
+                        arg1,
+                        arg2,
+                    } => {
                         if enabled || config == ParserConfig::Part1 {
                             instructions.push(Mul(arg1, arg2));
                         }
                         ParserState::Empty { enabled }
                     }
-                    _ => ParserState::Empty { enabled },
+                    _ => ParserState::Empty {
+                        enabled: state.enabled(),
+                    },
                 },
-            }
+                Token::Garbage => ParserState::Empty {
+                    enabled: state.enabled(),
+                },
+            };
         }
 
         Instructions(instructions)
