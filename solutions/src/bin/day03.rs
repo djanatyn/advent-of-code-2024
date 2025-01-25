@@ -1,6 +1,3 @@
-#[derive(Debug)]
-struct Tokenizer(String);
-
 #[derive(Debug, PartialEq)]
 struct Mul(i64, i64);
 
@@ -19,6 +16,9 @@ enum Token {
 }
 
 #[derive(Debug)]
+struct Parser(Vec<Token>);
+
+#[derive(Debug)]
 enum ParserState {
     Empty { enabled: bool },
     MulStart { enabled: bool },
@@ -26,6 +26,15 @@ enum ParserState {
     MulFirstArgComma { enabled: bool, arg1: i64 },
     MulSecondArg { enabled: bool, arg1: i64, arg2: i64 },
 }
+
+#[derive(Debug, PartialEq)]
+enum ParserConfig {
+    Part1,
+    Part2,
+}
+
+#[derive(Debug)]
+struct Tokenizer(String);
 
 impl ParserState {
     fn enabled(&self) -> bool {
@@ -37,15 +46,6 @@ impl ParserState {
             ParserState::MulSecondArg { enabled, .. } => *enabled,
         }
     }
-}
-
-#[derive(Debug)]
-struct Parser(Vec<Token>);
-
-#[derive(Debug, PartialEq)]
-enum ParserConfig {
-    Part1,
-    Part2,
 }
 
 impl Parser {
