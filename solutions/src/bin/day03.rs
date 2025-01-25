@@ -42,11 +42,19 @@ impl Parser {
         let mut state = ParserState::Empty { enabled: true };
 
         for token in &self.0 {
+            // do() or don't()
+            if let Token::Enable | Token::Disable = token {
+                state = match token {
+                    Token::Enable => ParserState::Empty { enabled: true },
+                    Token::Disable => ParserState::Empty { enabled: false },
+                    _ => panic!(),
+                };
+                continue;
+            }
+            // mul(arg1, arg2)
             state = match state {
                 ParserState::Empty { enabled } => match token {
                     Token::MulStart => ParserState::MulStart { enabled },
-                    Token::Enable => ParserState::Empty { enabled: true },
-                    Token::Disable => ParserState::Empty { enabled: false },
                     _ => ParserState::Empty { enabled },
                 },
                 ParserState::MulStart { enabled } => match token {
@@ -54,14 +62,10 @@ impl Parser {
                         enabled,
                         arg1: arg1.parse::<i64>().unwrap(),
                     },
-                    Token::Enable => ParserState::Empty { enabled: true },
-                    Token::Disable => ParserState::Empty { enabled: false },
                     _ => ParserState::Empty { enabled },
                 },
                 ParserState::MulFirstArg { enabled, arg1 } => match token {
                     Token::Comma => ParserState::MulFirstArgComma { enabled, arg1 },
-                    Token::Enable => ParserState::Empty { enabled: true },
-                    Token::Disable => ParserState::Empty { enabled: false },
                     _ => ParserState::Empty { enabled },
                 },
                 ParserState::MulFirstArgComma { enabled, arg1 } => match token {
@@ -70,8 +74,6 @@ impl Parser {
                         arg1,
                         arg2: arg2.parse::<i64>().unwrap(),
                     },
-                    Token::Enable => ParserState::Empty { enabled: true },
-                    Token::Disable => ParserState::Empty { enabled: false },
                     _ => ParserState::Empty { enabled },
                 },
                 ParserState::MulSecondArg {
@@ -85,8 +87,6 @@ impl Parser {
                         }
                         ParserState::Empty { enabled }
                     }
-                    Token::Enable => ParserState::Empty { enabled: true },
-                    Token::Disable => ParserState::Empty { enabled: false },
                     _ => ParserState::Empty { enabled },
                 },
             }
