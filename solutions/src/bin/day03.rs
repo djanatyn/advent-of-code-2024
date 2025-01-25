@@ -43,13 +43,12 @@ impl Parser {
 
         for token in &self.0 {
             // do() or don't()
+            state = match token {
+                Token::Enable => ParserState::Empty { enabled: true },
+                Token::Disable => ParserState::Empty { enabled: false },
+                _ => state,
+            };
             if let Token::Enable | Token::Disable = token {
-                let enabled: bool = match token {
-                    Token::Enable => true,
-                    Token::Disable => false,
-                    _ => panic!(),
-                };
-                state = ParserState::Empty { enabled };
                 continue;
             }
             // mul(arg1, arg2)
