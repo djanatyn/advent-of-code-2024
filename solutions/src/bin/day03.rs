@@ -50,8 +50,14 @@ enum ParserConfig {
 
 impl Parser {
     fn parse(&self, config: ParserConfig) -> Instructions {
-        let mut instructions = vec![];
+        let mut instructions: Vec<Mul> = vec![];
         let mut state = ParserState::Empty { enabled: true };
+
+        // TODO: fold?
+        // let (state, instructions): (ParserState, Vec<Mul>) = self.0.iter().fold(
+        //     (ParserState::Empty { enabled: true }, vec![]),
+        //     |(state, instructions): (ParserState, Vec<Mul>), token: &Token| todo!(),
+        // );
 
         for token in &self.0 {
             state = match token {
