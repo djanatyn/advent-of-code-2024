@@ -9,6 +9,8 @@ struct Instructions(Vec<Mul>);
 
 #[derive(Debug, PartialEq)]
 enum Token {
+    Enable,
+    Disable,
     MulStart,
     Number(String),
     Comma,
@@ -18,50 +20,74 @@ enum Token {
 
 #[derive(Debug)]
 enum ParserState {
-    Empty,
-    MulStart,
-    MulFirstArg { arg1: i64 },
-    MulFirstArgComma { arg1: i64 },
-    MulSecondArg { arg1: i64, arg2: i64 },
+    Empty { enabled: bool },
+    MulStart { enabled: bool },
+    MulFirstArg { enabled: bool, arg1: i64 },
+    MulFirstArgComma { enabled: bool, arg1: i64 },
+    MulSecondArg { enabled: bool, arg1: i64, arg2: i64 },
 }
 
 #[derive(Debug)]
 struct Parser(Vec<Token>);
 
+#[derive(Debug, PartialEq)]
+enum ParserConfig {
+    Part1,
+    Part2,
+}
+
 impl Parser {
-    fn parse(&self) -> Instructions {
+    fn parse(&self, config: ParserConfig) -> Instructions {
         let mut instructions = vec![];
-        let mut state = ParserState::Empty;
+        let mut state = ParserState::Empty { enabled: true };
 
         for token in &self.0 {
             state = match state {
-                ParserState::Empty => match token {
-                    Token::MulStart => ParserState::MulStart,
-                    _ => ParserState::Empty,
+                ParserState::Empty { enabled } => match token {
+                    Token::MulStart => ParserState::MulStart { enabled },
+                    Token::Enable => ParserState::Empty { enabled: true },
+                    Token::Disable => ParserState::Empty { enabled: false },
+                    _ => ParserState::Empty { enabled },
                 },
-                ParserState::MulStart => match token {
+                ParserState::MulStart { enabled } => match token {
                     Token::Number(arg1) => ParserState::MulFirstArg {
+                        enabled,
                         arg1: arg1.parse::<i64>().unwrap(),
                     },
-                    _ => ParserState::Empty,
+                    Token::Enable => ParserState::Empty { enabled: true },
+                    Token::Disable => ParserState::Empty { enabled: false },
+                    _ => ParserState::Empty { enabled },
                 },
-                ParserState::MulFirstArg { arg1 } => match token {
-                    Token::Comma => ParserState::MulFirstArgComma { arg1 },
-                    _ => ParserState::Empty,
+                ParserState::MulFirstArg { enabled, arg1 } => match token {
+                    Token::Comma => ParserState::MulFirstArgComma { enabled, arg1 },
+                    Token::Enable => ParserState::Empty { enabled: true },
+                    Token::Disable => ParserState::Empty { enabled: false },
+                    _ => ParserState::Empty { enabled },
                 },
-                ParserState::MulFirstArgComma { arg1 } => match token {
+                ParserState::MulFirstArgComma { enabled, arg1 } => match token {
                     Token::Number(arg2) => ParserState::MulSecondArg {
+                        enabled,
                         arg1,
                         arg2: arg2.parse::<i64>().unwrap(),
                     },
-                    _ => ParserState::Empty,
+                    Token::Enable => ParserState::Empty { enabled: true },
+                    Token::Disable => ParserState::Empty { enabled: false },
+                    _ => ParserState::Empty { enabled },
                 },
-                ParserState::MulSecondArg { arg1, arg2 } => match token {
+                ParserState::MulSecondArg {
+                    enabled,
+                    arg1,
+                    arg2,
+                } => match token {
                     Token::MulEnd => {
-                        instructions.push(Mul(arg1, arg2));
-                        ParserState::Empty
+                        if enabled || config == ParserConfig::Part1 {
+                            instructions.push(Mul(arg1, arg2));
+                        }
+                        ParserState::Empty { enabled }
                     }
-                    _ => ParserState::Empty,
+                    Token::Enable => ParserState::Empty { enabled: true },
+                    Token::Disable => ParserState::Empty { enabled: false },
+                    _ => ParserState::Empty { enabled },
                 },
             }
         }
@@ -71,6 +97,17 @@ impl Parser {
 }
 
 impl Tokenizer {
+    fn enable(&self, pos: usize) -> Option<(Token, usize)> {
+        let rest = self.0.get(pos..)?;
+        rest.starts_with("do()").then(|| (Token::Enable, pos + 4))
+    }
+
+    fn disable(&self, pos: usize) -> Option<(Token, usize)> {
+        let rest = self.0.get(pos..)?;
+        rest.starts_with("don't()")
+            .then(|| (Token::Disable, pos + 7))
+    }
+
     fn mul_start(&self, pos: usize) -> Option<(Token, usize)> {
         let rest = self.0.get(pos..)?;
         rest.starts_with("mul(").then(|| (Token::MulStart, pos + 4))
@@ -102,6 +139,8 @@ impl Tokenizer {
 
     fn tokenize(&self) -> Vec<Token> {
         let tokenizers = [
+            Self::enable,
+            Self::disable,
             Self::mul_start,
             Self::mul_end,
             Self::number,
@@ -135,18 +174,18 @@ impl Instructions {
         self.0.iter().map(|mul| mul.eval()).sum()
     }
 
-    fn parse(input: &str) -> Self {
+    fn parse(input: &str, config: ParserConfig) -> Self {
         let tokens = Tokenizer(input.to_string()).tokenize();
-        Parser(tokens).parse()
+        Parser(tokens).parse(config)
     }
 }
 
 fn part1(input: &str) -> i64 {
-    Instructions::parse(input).eval()
+    Instructions::parse(input, ParserConfig::Part1).eval()
 }
 
-fn part2(_input: &str) -> i64 {
-    todo!()
+fn part2(input: &str) -> i64 {
+    Instructions::parse(input, ParserConfig::Part2).eval()
 }
 
 fn main() {
@@ -164,11 +203,20 @@ pub mod tests {
     fn example_part1() {
         let memory =
             "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))".trim();
-        let instructions = Instructions::parse(memory);
+        let instructions = Instructions::parse(memory, ParserConfig::Part1);
         assert_eq!(
             instructions.0,
             vec![Mul(2, 4), Mul(5, 5), Mul(11, 8), Mul(8, 5)]
         );
         assert_eq!(instructions.eval(), 161);
+    }
+
+    #[test]
+    fn example_part2() {
+        let memory =
+            "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))".trim();
+        let instructions = Instructions::parse(memory, ParserConfig::Part2);
+        assert_eq!(instructions.0, vec![Mul(2, 4), Mul(8, 5)]);
+        assert_eq!(instructions.eval(), 48);
     }
 }
