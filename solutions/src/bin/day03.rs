@@ -1,11 +1,11 @@
 #[derive(Debug, PartialEq)]
-struct Mul(i64, i64);
+pub struct Mul(i64, i64);
 
 #[derive(Debug)]
-struct Instructions(Vec<Mul>);
+pub struct Instructions(pub Vec<Mul>);
 
 #[derive(Debug, PartialEq)]
-enum Token {
+pub enum Token {
     Enable,
     Disable,
     MulStart,
@@ -16,10 +16,10 @@ enum Token {
 }
 
 #[derive(Debug)]
-struct Parser(Vec<Token>);
+pub struct Parser(pub Vec<Token>);
 
 #[derive(Debug)]
-enum ParserState {
+pub enum ParserState {
     Empty { enabled: bool },
     MulStart { enabled: bool },
     MulFirstArg { enabled: bool, arg1: i64 },
@@ -28,16 +28,16 @@ enum ParserState {
 }
 
 #[derive(Debug, PartialEq)]
-enum ParserConfig {
+pub enum ParserConfig {
     Part1,
     Part2,
 }
 
 #[derive(Debug)]
-struct Tokenizer(String);
+pub struct Tokenizer(pub String);
 
 impl ParserState {
-    fn enabled(&self) -> bool {
+    pub fn enabled(&self) -> bool {
         match self {
             ParserState::Empty { enabled } => *enabled,
             ParserState::MulStart { enabled } => *enabled,
@@ -49,7 +49,7 @@ impl ParserState {
 }
 
 impl Parser {
-    fn parse(&self, config: ParserConfig) -> Instructions {
+    pub fn parse(&self, config: ParserConfig) -> Instructions {
         let mut instructions: Vec<Mul> = vec![];
         let mut state = ParserState::Empty { enabled: true };
 
@@ -157,7 +157,7 @@ impl Tokenizer {
         Some((Token::Garbage, pos + 1))
     }
 
-    fn tokenize(&self) -> Vec<Token> {
+    pub fn tokenize(&self) -> Vec<Token> {
         let tokenizers = [
             Self::enable,
             Self::disable,
@@ -184,35 +184,40 @@ impl Tokenizer {
 }
 
 impl Mul {
-    fn eval(&self) -> i64 {
+    pub fn eval(&self) -> i64 {
         self.0 * self.1
     }
 }
 
 impl Instructions {
-    fn eval(&self) -> i64 {
+    pub fn eval(&self) -> i64 {
         self.0.iter().map(|mul| mul.eval()).sum()
     }
 
-    fn parse(input: &str, config: ParserConfig) -> Self {
+    pub fn parse(input: &str, config: ParserConfig) -> Self {
         let tokens = Tokenizer(input.to_string()).tokenize();
         Parser(tokens).parse(config)
     }
 }
 
-fn part1(input: &str) -> i64 {
+pub fn part1(input: &str) -> i64 {
     Instructions::parse(input, ParserConfig::Part1).eval()
 }
 
-fn part2(input: &str) -> i64 {
+pub fn part2(input: &str) -> i64 {
     Instructions::parse(input, ParserConfig::Part2).eval()
 }
 
-fn main() {
-    let input = include_str!("day03.input");
+pub const INPUT: &str = include_str!("day03.input");
 
-    println!("part 1: {}", part1(input));
-    println!("part 2: {}", part2(input));
+pub const PART1_EXAMPLE: &str =
+    "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
+pub const PART2_EXAMPLE: &str =
+    "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))";
+
+fn main() {
+    println!("part 1: {}", part1(INPUT));
+    println!("part 2: {}", part2(INPUT));
 }
 
 #[cfg(test)]
@@ -221,8 +226,7 @@ pub mod tests {
 
     #[test]
     fn example_part1() {
-        let memory =
-            "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))".trim();
+        let memory = PART1_EXAMPLE.trim();
         let instructions = Instructions::parse(memory, ParserConfig::Part1);
         assert_eq!(
             instructions.0,
@@ -233,8 +237,7 @@ pub mod tests {
 
     #[test]
     fn example_part2() {
-        let memory =
-            "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))".trim();
+        let memory = PART2_EXAMPLE.trim();
         let instructions = Instructions::parse(memory, ParserConfig::Part2);
         assert_eq!(instructions.0, vec![Mul(2, 4), Mul(8, 5)]);
         assert_eq!(instructions.eval(), 48);
