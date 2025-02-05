@@ -10,11 +10,11 @@ const BLOCKS_PER_ROW: i32 = 8;
 const FONT_SIZE_MIN: u32 = 24;
 const FONT_SIZE_MAX: u32 = 32;
 
+const COLOR_BACKGROUND: u32 = 0x273136;
 const COLOR_BACKGROUND_DIM: u32 = 0x21282c;
-const COLOR_BACKGROUND_0: u32 = 0x273136;
-const COLOR_BACKGROUND_1: u32 = 0x313b42;
-const COLOR_BACKGROUND_2: u32 = 0x313b42;
+const COLOR_BACKGROUND_BLUE: u32 = 0x354157;
 const COLOR_BLACK: u32 = 0x1c1e1f;
+const COLOR_GREEN: u32 = 0xa2e57b;
 const COLOR_FOREGROUND: u32 = 0xe1e2e3;
 
 const FRAMES_PER_STEP: usize = 10;
@@ -52,7 +52,7 @@ fn model(app: &App) -> Model {
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
-    frame.clear(rgb_u32(COLOR_BACKGROUND_0));
+    frame.clear(rgb_u32(COLOR_BACKGROUND));
 
     let t: f32 = frame.nth() as f32 / 60.0;
 
@@ -66,13 +66,13 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     let font_size = map_range(font_sine, -1.0, 1.0, FONT_SIZE_MIN, FONT_SIZE_MAX);
 
-    let mut next_block = Rect::from_w_h(BLOCK_SIZE, BLOCK_SIZE).top_left_of(winp);
-    let mut row_start: Rect = next_block;
-    let mut col: i32 = 1;
-
+    // determine step
     let step = (frame.nth() as usize) % (model.trace.0.len() * FRAMES_PER_STEP);
-    dbg!(step);
+    if (step / FRAMES_PER_STEP) == 0 && frame.nth() > 60 {
+        std::process::exit(0);
+    }
 
+    // determine active block
     let mut msg: Option<String> = None;
     let mut active_pos: usize = 0;
     match model.trace.0.get(step / FRAMES_PER_STEP) {
@@ -88,7 +88,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
                         .trace
                         .0
                         .iter()
-                        .take(step / 4)
+                        .take(step / FRAMES_PER_STEP)
                         .rev()
                         .find_map(|trace| trace.evaluation())
                 }
@@ -97,11 +97,35 @@ fn view(app: &App, model: &Model, frame: Frame) {
         _ => todo!(),
     }
 
+    // draw status pane
+    let status = Rect::from_w_h((BLOCK_SIZE + PADDING) * BLOCKS_PER_ROW as f32, BLOCK_SIZE)
+        .top_left_of(winp);
+    // .shift_x((BLOCK_SIZE + PADDING) * (BLOCKS_PER_ROW as f32 / 2.0));
+    draw.rect()
+        .xy(status.xy())
+        .w_h((BLOCK_SIZE) * BLOCKS_PER_ROW as f32, BLOCK_SIZE)
+        .color(rgb_u32(COLOR_BACKGROUND_BLUE));
+    if let Some(text) = msg {
+        draw.text(&text)
+            .font_size(32)
+            .font(text::font::from_file(FONT_PATH).unwrap())
+            .no_line_wrap()
+            .xy(status.xy())
+            .color(rgb_u32(COLOR_FOREGROUND));
+    }
+
+    // draw input blocks
+    let mut next_block = Rect::from_w_h(BLOCK_SIZE, BLOCK_SIZE)
+        .top_left_of(winp)
+        .shift_y(-PADDING - BLOCK_SIZE);
+    let mut row_start: Rect = next_block;
+    let mut col: i32 = 1;
+
     for (pos, character) in model.input.iter().enumerate() {
-        let bg = if active_pos == pos {
-            COLOR_BLACK
+        let (fg, bg) = if active_pos == pos {
+            (COLOR_BLACK, COLOR_GREEN)
         } else {
-            COLOR_BACKGROUND_DIM
+            (COLOR_FOREGROUND, COLOR_BACKGROUND_DIM)
         };
         // draw block
         draw.rect()
@@ -112,7 +136,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
             .font_size(font_size)
             .font(text::font::from_file(FONT_PATH).unwrap())
             .xy(next_block.xy())
-            .color(rgb_u32(COLOR_FOREGROUND));
+            .color(rgb_u32(fg));
 
         // new row?
         if col >= BLOCKS_PER_ROW {
@@ -123,23 +147,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
             next_block = next_block.right_of(next_block).shift_x(PADDING);
             col += 1;
         }
-    }
-
-    let status = row_start
-        .below(row_start)
-        .shift_y(-PADDING)
-        .shift_x((BLOCK_SIZE + PADDING) * (BLOCKS_PER_ROW as f32 / 2.0) - (BLOCK_SIZE / 2.0));
-    draw.rect()
-        .xy(status.xy())
-        .w_h((BLOCK_SIZE) * BLOCKS_PER_ROW as f32, BLOCK_SIZE)
-        .color(rgb_u32(COLOR_BLACK));
-    if let Some(text) = msg {
-        draw.text(&text)
-            .font_size(32)
-            .font(text::font::from_file(FONT_PATH).unwrap())
-            .no_line_wrap()
-            .xy(status.xy())
-            .color(rgb_u32(COLOR_FOREGROUND));
     }
 
     app.main_window()
