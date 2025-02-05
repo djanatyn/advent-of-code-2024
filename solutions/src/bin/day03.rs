@@ -16,6 +16,15 @@ pub enum TraceEvent {
     },
 }
 
+impl TraceEvent {
+    pub fn evaluation(&self) -> Option<String> {
+        match self {
+            Self::TokenizerEvent { evaluation, .. } => evaluation.clone(),
+            Self::ParserEvent { evaluation, .. } => evaluation.clone(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Mul(i64, i64);
 

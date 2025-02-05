@@ -2,7 +2,7 @@ use nannou::{color::rgb_u32, prelude::*};
 
 mod day03;
 
-use day03::{Instructions, ParserConfig, Trace};
+use day03::{Instructions, ParserConfig, Trace, TraceEvent};
 
 const PADDING: f32 = 12.0;
 const BLOCK_SIZE: f32 = 64.0;
@@ -16,6 +16,10 @@ const COLOR_BACKGROUND_1: u32 = 0x313b42;
 const COLOR_BACKGROUND_2: u32 = 0x313b42;
 const COLOR_BLACK: u32 = 0x1c1e1f;
 const COLOR_FOREGROUND: u32 = 0xe1e2e3;
+
+const FRAMES_PER_STEP: usize = 10;
+
+const FONT_PATH: &str = "./fonts/scientifica.ttf";
 
 struct Model {
     input: Vec<char>,
@@ -31,6 +35,7 @@ fn main() {
 }
 
 fn update(_app: &App, _model: &mut Model, _update: Update) {}
+
 fn event(_app: &App, _model: &mut Model, _event: Event) {}
 
 fn model(app: &App) -> Model {
@@ -49,7 +54,7 @@ fn model(app: &App) -> Model {
 fn view(app: &App, model: &Model, frame: Frame) {
     frame.clear(rgb_u32(COLOR_BACKGROUND_0));
 
-    let t = frame.nth() as f32 / 60.0;
+    let t: f32 = frame.nth() as f32 / 60.0;
 
     let draw = app.draw();
     let win = app.window_rect();
@@ -60,11 +65,37 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let pos_sine = (t / 4.0).sin();
 
     let font_size = map_range(font_sine, -1.0, 1.0, FONT_SIZE_MIN, FONT_SIZE_MAX);
-    let active_pos = map_range(pos_sine, -1.0, 1.0, 0, model.input.len());
 
     let mut next_block = Rect::from_w_h(BLOCK_SIZE, BLOCK_SIZE).top_left_of(winp);
     let mut row_start: Rect = next_block;
     let mut col: i32 = 1;
+
+    let step = (frame.nth() as usize) % (model.trace.0.len() * FRAMES_PER_STEP);
+    dbg!(step);
+
+    let mut msg: Option<String> = None;
+    let mut active_pos: usize = 0;
+    match model.trace.0.get(step / FRAMES_PER_STEP) {
+        Some(TraceEvent::TokenizerEvent {
+            pos, evaluation, ..
+        }) => {
+            active_pos = *pos;
+            let msg = match msg {
+                Some(eval) => msg = Some(eval.clone()),
+                None => {
+                    // search for previous message
+                    msg = model
+                        .trace
+                        .0
+                        .iter()
+                        .take(step / 4)
+                        .rev()
+                        .find_map(|trace| trace.evaluation())
+                }
+            };
+        }
+        _ => todo!(),
+    }
 
     for (pos, character) in model.input.iter().enumerate() {
         let bg = if active_pos == pos {
@@ -79,7 +110,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
             .color(rgb_u32(bg));
         draw.text(character.to_string().as_str())
             .font_size(font_size)
-            .font(text::font::from_file("./fonts/scientifica.ttf").unwrap())
+            .font(text::font::from_file(FONT_PATH).unwrap())
             .xy(next_block.xy())
             .color(rgb_u32(COLOR_FOREGROUND));
 
@@ -102,12 +133,14 @@ fn view(app: &App, model: &Model, frame: Frame) {
         .xy(status.xy())
         .w_h((BLOCK_SIZE) * BLOCKS_PER_ROW as f32, BLOCK_SIZE)
         .color(rgb_u32(COLOR_BLACK));
-    draw.text("advent of code day 3")
-        .font_size(font_size)
-        .font(text::font::from_file("./fonts/scientifica.ttf").unwrap())
-        .no_line_wrap()
-        .xy(status.xy())
-        .color(rgb_u32(COLOR_FOREGROUND));
+    if let Some(text) = msg {
+        draw.text(&text)
+            .font_size(32)
+            .font(text::font::from_file(FONT_PATH).unwrap())
+            .no_line_wrap()
+            .xy(status.xy())
+            .color(rgb_u32(COLOR_FOREGROUND));
+    }
 
     app.main_window()
         .capture_frame(captured_frame_path(app, &frame));
