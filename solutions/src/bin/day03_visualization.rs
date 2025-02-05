@@ -2,6 +2,8 @@ use nannou::{color::rgb_u32, prelude::*};
 
 mod day03;
 
+use day03::{Instructions, ParserConfig, Trace};
+
 const PADDING: f32 = 12.0;
 const BLOCK_SIZE: f32 = 64.0;
 const BLOCKS_PER_ROW: i32 = 8;
@@ -17,6 +19,7 @@ const COLOR_FOREGROUND: u32 = 0xe1e2e3;
 
 struct Model {
     input: Vec<char>,
+    trace: Trace,
 }
 
 fn main() {
@@ -36,8 +39,10 @@ fn model(app: &App) -> Model {
         // .fullscreen()
         .build()
         .unwrap();
+    let (_, trace) = Instructions::parse(day03::PART1_EXAMPLE, ParserConfig::Part1);
     Model {
         input: day03::PART1_EXAMPLE.chars().collect(),
+        trace,
     }
 }
 

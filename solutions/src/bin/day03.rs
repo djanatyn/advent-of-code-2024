@@ -1,10 +1,28 @@
+#[derive(Debug)]
+pub struct Trace(pub Vec<TraceEvent>);
+
+#[derive(Debug)]
+pub enum TraceEvent {
+    TokenizerEvent {
+        pos: usize,
+        tokens: Vec<Token>,
+        evaluation: Option<String>,
+    },
+    ParserEvent {
+        pos: usize,
+        tokens: Vec<Token>,
+        state: ParserState,
+        evaluation: Option<String>,
+    },
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Mul(i64, i64);
 
 #[derive(Debug)]
 pub struct Instructions(pub Vec<Mul>);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Enable,
     Disable,
@@ -157,7 +175,7 @@ impl Tokenizer {
         Some((Token::Garbage, pos + 1))
     }
 
-    pub fn tokenize(&self) -> Vec<Token> {
+    pub fn tokenize(&self) -> (Vec<Token>, Trace) {
         let tokenizers = [
             Self::enable,
             Self::disable,
@@ -169,17 +187,28 @@ impl Tokenizer {
         ];
 
         let mut pos: usize = 0;
-        let mut tokens = vec![];
+        let mut tokens: Vec<Token> = vec![];
+        let mut trace: Vec<TraceEvent> = vec![];
 
         while pos <= self.0.len() {
+            trace.push(TraceEvent::TokenizerEvent {
+                pos,
+                tokens: tokens.clone(),
+                evaluation: None,
+            });
             if let Some((token, new_pos)) = tokenizers.iter().find_map(|t| t(self, pos)) {
+                trace.push(TraceEvent::TokenizerEvent {
+                    pos,
+                    tokens: tokens.clone(),
+                    evaluation: Some(format!("found token: {:?}", token)),
+                });
                 tokens.push(token);
                 pos = new_pos;
             } else {
                 panic!("failed to match any tokenizers")
             }
         }
-        tokens
+        (tokens, Trace(trace))
     }
 }
 
@@ -194,18 +223,20 @@ impl Instructions {
         self.0.iter().map(|mul| mul.eval()).sum()
     }
 
-    pub fn parse(input: &str, config: ParserConfig) -> Self {
-        let tokens = Tokenizer(input.to_string()).tokenize();
-        Parser(tokens).parse(config)
+    pub fn parse(input: &str, config: ParserConfig) -> (Self, Trace) {
+        let (tokens, trace) = Tokenizer(input.to_string()).tokenize();
+        (Parser(tokens).parse(config), trace)
     }
 }
 
 pub fn part1(input: &str) -> i64 {
-    Instructions::parse(input, ParserConfig::Part1).eval()
+    let (instructions, _) = Instructions::parse(input, ParserConfig::Part1);
+    instructions.eval()
 }
 
 pub fn part2(input: &str) -> i64 {
-    Instructions::parse(input, ParserConfig::Part2).eval()
+    let (instructions, _) = Instructions::parse(input, ParserConfig::Part2);
+    instructions.eval()
 }
 
 pub const INPUT: &str = include_str!("day03.input");
