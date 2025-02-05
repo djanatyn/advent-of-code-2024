@@ -17,7 +17,7 @@ const COLOR_BLACK: u32 = 0x1c1e1f;
 const COLOR_GREEN: u32 = 0xa2e57b;
 const COLOR_FOREGROUND: u32 = 0xe1e2e3;
 
-const FRAMES_PER_STEP: usize = 10;
+const FRAMES_PER_STEP: usize = 14;
 
 const FONT_PATH: &str = "./fonts/scientifica.ttf";
 
@@ -104,10 +104,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.rect()
         .xy(status.xy())
         .w_h((BLOCK_SIZE) * BLOCKS_PER_ROW as f32, BLOCK_SIZE)
-        .color(rgb_u32(COLOR_BACKGROUND_BLUE));
+        .color(rgb_u32(COLOR_BLACK));
     if let Some(text) = msg {
         draw.text(&text)
-            .font_size(32)
+            .font_size(40)
             .font(text::font::from_file(FONT_PATH).unwrap())
             .no_line_wrap()
             .xy(status.xy())
